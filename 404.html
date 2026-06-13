@@ -182,11 +182,12 @@
     const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllYmV6dXdmcGtsYXRwb2p1cGVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExODUzNDUsImV4cCI6MjA5Njc2MTM0NX0.jDQNVPIcUrkIXhifGL04sJGrmgYVHVj2Ec2HxyYBYQI";
     const APP_STORE_URL = "https://apps.apple.com/app/yberchords/idPLACEHOLDER";
 
-    // Parse song ID from path — handles /song/SOME-UUID
+    // Parse song ID from path — handles /yberchords-links/song/SOME-UUID
+    // or /song/SOME-UUID (custom domain).
     function parseSongID() {
       const parts = window.location.pathname.replace(/^\/+|\/+$/g, "").split("/");
-      // Expect path: /song/<id>
-      if (parts.length >= 2 && parts[0] === "song") return parts[1];
+      const idx = parts.indexOf("song");
+      if (idx !== -1 && parts.length > idx + 1) return parts[idx + 1];
       return null;
     }
 
