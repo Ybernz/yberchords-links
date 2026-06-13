@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YberChords</title>
+
+  <!-- Open Graph / iMessage preview -->
+  <meta property="og:site_name" content="YberChords" />
+  <meta property="og:type" content="website" />
+  <meta id="og-title" property="og:title" content="Chord chart on YberChords" />
+  <meta id="og-description" property="og:description" content="Open in the YberChords app to view this chord chart." />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0e0e0e;
+      color: #f0f0f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 20px;
+      padding: 32px 28px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+    }
+
+    .app-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+    }
+
+    .label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #c9a84c;
+      margin-bottom: 8px;
+    }
+
+    #song-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #f0f0f0;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+
+    #song-artist {
+      font-size: 15px;
+      color: #888;
+      margin-bottom: 20px;
+    }
+
+    .meta-pills {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+
+    .pill {
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #aaa;
+    }
+
+    .pill span { color: #c9a84c; }
+
+    .btn-primary {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      background: #c9a84c;
+      color: #0e0e0e;
+      font-size: 16px;
+      font-weight: 700;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.15s;
+      margin-bottom: 12px;
+    }
+
+    .btn-primary:active { opacity: 0.8; }
+
+    .btn-secondary {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: transparent;
+      color: #888;
+      font-size: 14px;
+      font-weight: 500;
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .btn-secondary:hover { border-color: #444; color: #bbb; }
+
+    .loading { color: #555; font-size: 14px; padding: 20px 0; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 16px 0;
+      color: #444;
+      font-size: 12px;
+    }
+
+    .divider::before, .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: #2a2a2a;
+    }
+
+    #song-info { display: none; }
+    #song-loading { display: block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="app-icon">🎸</div>
+
+    <div id="song-loading" class="loading">Loading chord chart…</div>
+
+    <div id="song-info">
+      <div class="label">Chord Chart</div>
+      <div id="song-title">Song Title</div>
+      <div id="song-artist"></div>
+      <div class="meta-pills" id="meta-pills"></div>
+    </div>
+
+    <a id="btn-open" class="btn-primary" href="#">Open in YberChords</a>
+
+    <div class="divider">or</div>
+
+    <a
+      id="btn-store"
+      class="btn-secondary"
+      href="https://apps.apple.com/app/yberchords/idPLACEHOLDER"
+      target="_blank"
+    >
+      Get YberChords on the App Store
+    </a>
+  </div>
+
+  <script>
+    const SUPABASE_URL  = "https://yebezuwfpklatpojupee.supabase.co";
+    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllYmV6dXdmcGtsYXRwb2p1cGVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExODUzNDUsImV4cCI6MjA5Njc2MTM0NX0.jDQNVPIcUrkIXhifGL04sJGrmgYVHVj2Ec2HxyYBYQI";
+    const APP_STORE_URL = "https://apps.apple.com/app/yberchords/idPLACEHOLDER";
+
+    // Parse song ID from path — handles /song/SOME-UUID
+    function parseSongID() {
+      const parts = window.location.pathname.replace(/^\/+|\/+$/g, "").split("/");
+      // Expect path: /song/<id>
+      if (parts.length >= 2 && parts[0] === "song") return parts[1];
+      return null;
+    }
+
+    const songID = parseSongID();
+    const deepLink = songID ? `yberchords://song/${songID}` : "yberchords://";
+
+    // Wire up the open button immediately so it works even before fetch completes
+    document.getElementById("btn-open").href = deepLink;
+    document.getElementById("btn-store").href = APP_STORE_URL;
+
+    // Attempt deep link on page load
+    function attemptDeepLink() {
+      const start = Date.now();
+      window.location.href = deepLink;
+
+      // If the page is still visible after 2.5s, the app wasn't installed
+      setTimeout(() => {
+        if (Date.now() - start < 3500) {
+          // Page is still here — app not installed, leave user to tap the store button
+          // (don't auto-redirect so they can read the song info first)
+        }
+      }, 2500);
+    }
+
+    // Fetch public song data from Supabase
+    async function loadSong(id) {
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/songs?id=eq.${id}&visibility=eq.public&select=title,artist,key,capo,bpm`,
+          {
+            headers: {
+              "apikey": SUPABASE_ANON,
+              "Authorization": `Bearer ${SUPABASE_ANON}`,
+            }
+          }
+        );
+        const rows = await res.json();
+        if (!rows || rows.length === 0) return null;
+        return rows[0];
+      } catch {
+        return null;
+      }
+    }
+
+    async function init() {
+      if (!songID) {
+        // Root hit — just show the store button
+        document.getElementById("song-loading").textContent = "Download YberChords to manage your chord charts.";
+        document.getElementById("btn-open").style.display = "none";
+        return;
+      }
+
+      attemptDeepLink();
+
+      const song = await loadSong(songID);
+
+      document.getElementById("song-loading").style.display = "none";
+      document.getElementById("song-info").style.display = "block";
+
+      if (song) {
+        document.getElementById("song-title").textContent = song.title || "Untitled";
+        const artistEl = document.getElementById("song-artist");
+        if (song.artist) artistEl.textContent = song.artist;
+
+        const pills = document.getElementById("meta-pills");
+        if (song.key)  pills.innerHTML += `<div class="pill">Key <span>${song.key}</span></div>`;
+        if (song.capo > 0) pills.innerHTML += `<div class="pill">Capo <span>${song.capo}</span></div>`;
+        if (song.bpm)  pills.innerHTML += `<div class="pill"><span>${song.bpm}</span> BPM</div>`;
+
+        // Update OG tags for link previews
+        document.getElementById("og-title").content = song.title + (song.artist ? ` — ${song.artist}` : "");
+        document.getElementById("og-description").content =
+          [song.key && `Key ${song.key}`, song.capo > 0 && `Capo ${song.capo}`]
+            .filter(Boolean).join(" · ") || "Chord chart on YberChords";
+      } else {
+        document.getElementById("song-title").textContent = "Chord Chart";
+        document.getElementById("song-artist").textContent = "Open in YberChords to view";
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
